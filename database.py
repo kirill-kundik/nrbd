@@ -63,18 +63,26 @@ class Database:
     def insert_sequence_differences(self, params):
         self.insert('sequence_difference', ['position', 'value', 'sequence_id'], params, id_=False, many=True)
 
-    def insert_sequence(self, url, is_wild=False, base_sequence=None):
-        base_sequence = self.get_base_sequence(id_=base_sequence)
-
-        if not base_sequence:
-            return
+    def insert_sequence(self, url, fasta, type_=None, base_sequence_id=None):
+        # base_sequence = self.get_base_sequence(id_=base_sequence)
+        # if not base_sequence:
+        #     return
 
         table_name = 'sequence'
+        fields = ['url', 'fasta']
+        values = [url, fasta]
+
+        if type_ is not None:
+            fields.append('sequence_type')
+            values.append(type_)
+        if base_sequence_id is not None:
+            fields.append('base_sequence_id')
+            values.append(base_sequence_id)
 
         sequence = self.select(
             table_name,
             ['id = %s'],
-            [self.insert('sequence', ['url', 'is_wild', 'base_sequence_id'], [url, is_wild, base_sequence["id"]])]
+            [self.insert('sequence', fields, values)]
         )
 
         return sequence
