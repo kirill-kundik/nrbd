@@ -63,7 +63,13 @@ class Database:
     def insert_sequence_differences(self, params):
         self.insert('sequence_difference', ['position', 'value', 'sequence_id'], params, id_=False, many=True)
 
-    def insert_sequence(self, url, fasta, type_=None, base_sequence_id=None):
+    def insert_fasta_positions(self, position, value, sequence_id):
+        table_name = 'fasta_position'
+        fields = ['position', 'value', 'sequence_id']
+        values = [position, value, sequence_id]
+        self.insert(table_name, fields, values)
+
+    def insert_sequence(self, url, fasta, type_=None, base_sequence_id=None, name=None):
         # base_sequence = self.get_base_sequence(id_=base_sequence)
         # if not base_sequence:
         #     return
@@ -75,15 +81,23 @@ class Database:
         if type_ is not None:
             fields.append('sequence_type')
             values.append(type_)
-        if base_sequence_id is not None:
-            fields.append('base_sequence_id')
-            values.append(base_sequence_id)
+        # if base_sequence_id is not None:
+        #     fields.append('base_sequence_id')
+        #     values.append(base_sequence_id)
 
+        if name is not None:
+            fields.append('name')
+            values.append(name)
+
+        res = self.insert('sequence', fields, values)
         sequence = self.select(
             table_name,
             ['id = %s'],
-            [self.insert('sequence', fields, values)]
+            [res]
         )
+
+        # for i in range(len(fasta)):
+        #     self.insert_fasta_positions(i, fasta[i], res)
 
         return sequence
 

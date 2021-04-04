@@ -14,6 +14,7 @@ def read_fasta(filename):
 
 def main():
     conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='gulayeva'")
+    # conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='root'")
     # conn.set_session(autocommit=True) # enabling autocommit
     db = database.Database(conn)
 
@@ -21,7 +22,7 @@ def main():
     base_sequence = db.insert_sequence(
         'EVA',
         'TTCTTTCATGGGGAAGCAGATTTGGGTACCACCCAAGTATTGACTCACCCATCAACAACCGCTATGTATTTCGTACATTACTGCCAGCCACCATGAATATTGTACAGTACCATAAATACTTGACCACCTGTAGTACATAAAAACCCAATCCACATCAAAACCCTCCCCCCATGCTTACAAGCAAGTACAGCAATCAACCTTCAACTGTCACACATCAACTGCAACTCCAAAGCCACCCCTCACCCACTAGGATATCAACAAACCTACCCACCCTTAACAGTACATAGCACATAAAGCCATTTACCGTACATAGCACATTACAGTCAAATCCCTTCTCGTCCCCATGGATGACCCCCCTCAGATAGGGGTCCCTTGAC',
-        type_=1
+        type_=1, name="EVA"
     )
 
     fasta = read_fasta('result.csv')
