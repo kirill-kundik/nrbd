@@ -13,81 +13,86 @@ $generate_positions$ LANGUAGE plpgsql;
 
 create table region
 (
-	id serial not null
-		constraint region_pkey
-			primary key,
-	name varchar(255) not null
+    id   serial       not null
+        constraint region_pkey
+            primary key,
+    name varchar(255) not null
 );
 
-alter table region owner to postgres;
+alter table region
+    owner to postgres;
 
 create table sequence
 (
-	id serial not null
-		constraint sequence_pkey
-			primary key,
-	sequence_type integer default 0 not null,
-    name varchar(255) null unique,
-	fasta varchar(377) not null unique
+    id            serial            not null
+        constraint sequence_pkey
+            primary key,
+    sequence_type integer default 0 not null,
+    name          varchar(255)      null unique,
+    fasta         varchar(377)      not null unique
 );
 
-alter table sequence owner to postgres;
+alter table sequence
+    owner to postgres;
 
 create trigger generate_fasta_positions
-	after insert
-	on sequence
-	for each row
-	execute procedure generate_positions();
+    after insert
+    on sequence
+    for each row
+execute procedure generate_positions();
 
 create table fasta_position
 (
-	id serial not null
-		constraint fasta_position_pkey
-			primary key,
-	position integer not null,
-	value varchar(1) not null,
-	sequence_id integer not null
-		constraint fasta_position_sequence_id_fkey
-			references sequence
-				on delete cascade
+    id          serial     not null
+        constraint fasta_position_pkey
+            primary key,
+    position    integer    not null,
+    value       varchar(1) not null,
+    sequence_id integer    not null
+        constraint fasta_position_sequence_id_fkey
+            references sequence
+            on delete cascade
 );
 
-alter table fasta_position owner to postgres;
+alter table fasta_position
+    owner to postgres;
 
 create table person
 (
-	id serial not null
-		constraint person_pkey
-			primary key,
-	region_id integer
-		constraint person_region_id_fkey
-			references region
-				on delete set null,
-    url character varying(255) unique,
-	sequence_id integer not null
-		constraint person_sequence_id_fkey
-			references sequence
-				on delete cascade
+    id          serial  not null
+        constraint person_pkey
+            primary key,
+    region_id   integer
+        constraint person_region_id_fkey
+            references region
+            on delete set null,
+    url         character varying(255) unique,
+    sequence_id integer not null
+        constraint person_sequence_id_fkey
+            references sequence
+            on delete cascade
 );
 
-alter table person owner to postgres;
+alter table person
+    owner to postgres;
 
 create table wild_type_sequence
 (
-	id serial not null
-		constraint wild_type_sequence_pkey
-			primary key,
-	wild_sequence_id integer not null
-		constraint wild_type_sequence_wild_sequence_id_fkey
-			references sequence
-				on delete cascade,
-	component_sequence_id integer
-		constraint wild_type_sequence_component_sequence_id_fkey
-			references sequence
-				on delete set null
+    id                    serial  not null
+        constraint wild_type_sequence_pkey
+            primary key,
+    wild_sequence_id      integer not null
+        constraint wild_type_sequence_wild_sequence_id_fkey
+            references sequence
+            on delete cascade,
+    component_sequence_id integer
+        constraint wild_type_sequence_component_sequence_id_fkey
+            references sequence
+            on delete set null
 );
 
-alter table wild_type_sequence owner to postgres;
+alter table wild_type_sequence
+    owner to postgres;
 
 -- CREATE TRIGGER generate_fasta_positions
 --     AFTER INSERT
