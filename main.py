@@ -20,9 +20,8 @@ def main():
 
     # base_sequence = db.get_base_sequence(1)
     base_sequence = db.insert_sequence(
-        'EVA',
         'TTCTTTCATGGGGAAGCAGATTTGGGTACCACCCAAGTATTGACTCACCCATCAACAACCGCTATGTATTTCGTACATTACTGCCAGCCACCATGAATATTGTACAGTACCATAAATACTTGACCACCTGTAGTACATAAAAACCCAATCCACATCAAAACCCTCCCCCCATGCTTACAAGCAAGTACAGCAATCAACCTTCAACTGTCACACATCAACTGCAACTCCAAAGCCACCCCTCACCCACTAGGATATCAACAAACCTACCCACCCTTAACAGTACATAGCACATAAAGCCATTTACCGTACATAGCACATTACAGTCAAATCCCTTCTCGTCCCCATGGATGACCCCCCTCAGATAGGGGTCCCTTGAC',
-        type_=1, name="EVA"
+        type_=1,
     )
 
     fasta = read_fasta('result.csv')
@@ -33,11 +32,13 @@ def main():
     processed = 0
 
     for f in fasta:
-        sequence = db.insert_sequence(f'{base_url}{f[0]}', f[2], base_sequence_id=base_sequence['id'])
+        sequence = db.get_sequence(f[2])
+        if sequence is None:
+            sequence = db.insert_sequence(f[2], base_sequence_id=base_sequence['id'])
 
         region = db.get_region(f[1])
-
-        db.insert_person(region['id'], sequence['id'])
+        url = f'{base_url}{f[0]}'
+        db.insert_person(region['id'], sequence['id'], url)
 
         # difference = fasta_comp.compare_fasta(base_sequence['fasta'], f[2])
         #
