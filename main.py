@@ -19,10 +19,11 @@ def main():
     db = database.Database(conn)
 
     # base_sequence = db.get_base_sequence(1)
-    base_sequence = db.insert_sequence(
+    db.insert_sequence(
         'TTCTTTCATGGGGAAGCAGATTTGGGTACCACCCAAGTATTGACTCACCCATCAACAACCGCTATGTATTTCGTACATTACTGCCAGCCACCATGAATATTGTACAGTACCATAAATACTTGACCACCTGTAGTACATAAAAACCCAATCCACATCAAAACCCTCCCCCCATGCTTACAAGCAAGTACAGCAATCAACCTTCAACTGTCACACATCAACTGCAACTCCAAAGCCACCCCTCACCCACTAGGATATCAACAAACCTACCCACCCTTAACAGTACATAGCACATAAAGCCATTTACCGTACATAGCACATTACAGTCAAATCCCTTCTCGTCCCCATGGATGACCCCCCTCAGATAGGGGTCCCTTGAC',
         type_=1, name="EVA"
     )
+    conn.commit()
 
     fasta = read_fasta('result.csv')
     next(fasta, None)  # skip csv headers
@@ -34,16 +35,11 @@ def main():
     for f in fasta:
         sequence = db.get_sequence(f[2])
         if sequence is None:
-            sequence = db.insert_sequence(f[2], base_sequence_id=base_sequence['id'])
+            sequence = db.insert_sequence(f[2])
 
         region = db.get_region(f[1])
         url = f'{base_url}{f[0]}'
         db.insert_person(region['id'], sequence['id'], url)
-
-        # difference = fasta_comp.compare_fasta(base_sequence['fasta'], f[2])
-        #
-        # if difference:
-        #     db.insert_sequence_differences(list(map(lambda x: [*x, sequence['id']], difference)))
 
         conn.commit()
 
