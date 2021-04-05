@@ -27,10 +27,7 @@ create table sequence
 		constraint sequence_pkey
 			primary key,
 	sequence_type integer default 0 not null,
-	base_sequence_id integer
-		constraint sequence_base_sequence_id_fkey
-			references sequence
-				on delete cascade,
+    name varchar(255),
 	fasta varchar(377) not null unique
 );
 
