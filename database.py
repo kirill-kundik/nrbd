@@ -79,7 +79,7 @@ class Database:
         values = [position, value, sequence_id]
         self.insert(table_name, fields, values)
 
-    def insert_sequence(self, fasta, type_=None, base_sequence_id=None):
+    def insert_sequence(self, fasta, type_=None, base_sequence_id=None, name=None):
         # base_sequence = self.get_base_sequence(id_=base_sequence)
         # if not base_sequence:
         #     return
@@ -95,9 +95,9 @@ class Database:
             fields.append('base_sequence_id')
             values.append(base_sequence_id)
 
-        # if name is not None:
-        #     fields.append('name')
-        #     values.append(name)
+        if name is not None:
+            fields.append('name')
+            values.append(name)
 
         res = self.insert('sequence', fields, values)
 
