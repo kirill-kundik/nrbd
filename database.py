@@ -3,8 +3,9 @@ import psycopg2.extras
 
 
 class Database:
-    def __init__(self, conn):
+    def __init__(self, conn, debug=False):
         self._conn = conn
+        self._debug = debug
 
     def get_cursor(self, dict_return=False):
         return self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if dict_return else self._conn.cursor()
@@ -12,7 +13,10 @@ class Database:
     def execute_query(self, query, params, fetch=True, dict_return=False, many=False):
         cursor = self.get_cursor(dict_return)
 
-        # print(query) # printing all executed queries (just for debug purpose)
+        if self._debug:
+            print(f'DEBUG --- QUERY: {query}')
+            print(f'DEBUG --- PARAMS: {params}')
+            print(f'DEBUG --- FETCH: {fetch}, DICT RETURN: {dict_return}, EXECUTE MANY: {many}')
 
         if many:
             cursor.executemany(query, params)
@@ -55,6 +59,12 @@ class Database:
 
         return region
 
+    def get_sequence(self, fasta_code):
+        return self.select('sequence', ['fasta = %s'], [fasta_code])
+
+    def get_person(self, url):
+        return self.select('person', ['url = %s'], [url])
+
     def get_base_sequence(self, id_=None):
         filter_ = ['id = %s'] if id_ else None
         params = [id_] if id_ else None
@@ -69,40 +79,32 @@ class Database:
         values = [position, value, sequence_id]
         self.insert(table_name, fields, values)
 
-    def insert_sequence(self, url, fasta, type_=None, base_sequence_id=None, name=None):
+    def insert_sequence(self, fasta, type_=None, base_sequence_id=None):
         # base_sequence = self.get_base_sequence(id_=base_sequence)
         # if not base_sequence:
         #     return
 
         table_name = 'sequence'
-        fields = ['url', 'fasta']
-        values = [url, fasta]
+        fields = ['fasta']
+        values = [fasta]
 
         if type_ is not None:
             fields.append('sequence_type')
             values.append(type_)
-        # if base_sequence_id is not None:
-        #     fields.append('base_sequence_id')
-        #     values.append(base_sequence_id)
+        if base_sequence_id is not None:
+            fields.append('base_sequence_id')
+            values.append(base_sequence_id)
 
-        if name is not None:
-            fields.append('name')
-            values.append(name)
+        # if name is not None:
+        #     fields.append('name')
+        #     values.append(name)
 
         res = self.insert('sequence', fields, values)
-        sequence = self.select(
-            table_name,
-            ['id = %s'],
-            [res]
-        )
 
-        # for i in range(len(fasta)):
-        #     self.insert_fasta_positions(i, fasta[i], res)
+        return self.select(table_name, ['id = %s'], [res])
 
-        return sequence
-
-    def insert_person(self, region_id, sequence_id):
-        self.insert('person', ['region_id', 'sequence_id'], [region_id, sequence_id])
+    def insert_person(self, region_id, sequence_id, url):
+        self.insert('person', ['region_id', 'sequence_id', 'url'], [region_id, sequence_id, url])
 
     def calculate_wild(self):
         pass
