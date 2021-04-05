@@ -26,13 +26,12 @@ create table sequence
 	id serial not null
 		constraint sequence_pkey
 			primary key,
-	url varchar(255),
 	sequence_type integer default 0 not null,
 	base_sequence_id integer
 		constraint sequence_base_sequence_id_fkey
 			references sequence
 				on delete cascade,
-	fasta varchar(377) not null
+	fasta varchar(377) not null unique
 );
 
 alter table sequence owner to postgres;
@@ -67,6 +66,7 @@ create table person
 		constraint person_region_id_fkey
 			references region
 				on delete set null,
+    url character varying(255) unique,
 	sequence_id integer not null
 		constraint person_sequence_id_fkey
 			references sequence
