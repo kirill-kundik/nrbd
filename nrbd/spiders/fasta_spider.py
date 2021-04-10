@@ -314,9 +314,16 @@ class FastaSpider(scrapy.Spider):
                   'https://www.ncbi.nlm.nih.gov/nuccore/JX895515.1']
     result_file = 'result.csv'
 
+    def __init__(self):
+        self._write_file = open(self.result_file, 'w')
+
+    def close(spider, reason):
+        self._write_file.close()
+
     def start_requests(self):
-        with open(self.result_file, 'w') as f:
-            f.write('version,region,fasta\n')
+        self._write('version,region,fasta\n')
+        # with open(self.result_file, 'w') as f:
+        #     f.write('version,region,fasta\n')
         for url in self.start_urls:
             yield scrapy_splash.SplashRequest(f'{url}?report=fasta', self.parse_nuccore, args={'wait': 2.5})
 
@@ -324,7 +331,7 @@ class FastaSpider(scrapy.Spider):
         try:
             fasta_full = response.css('div#viewercontent1 > pre::text').extract()[0]
         except IndexError:
-            return scrapy_splash.SplashRequest(response.url, self.parse_nuccore, args={'wait': 5.0})
+            yield scrapy_splash.SplashRequest(response.url, self.parse_nuccore, args={'wait': 5.0})
 
         version = fasta_full[1:11]
         region_rex = r'isolate ([A-Z]+)'
@@ -332,8 +339,10 @@ class FastaSpider(scrapy.Spider):
         region = re.compile(region_rex).search(fasta_full).group(1)
         fasta = re.compile(fasta_rex).search(fasta_full.replace('\n', '')).group(1)
 
-        with open(self.result_file, 'a') as f:
-            f.write(f'{version},{region},{fasta}\n')
+        # with open(self.result_file, 'a') as f:
+        #     f.write(f'{version},{region},{fasta}\n')
+
+        self._write(f'{version},{region},{fasta}\n')
 
         yield {
             'region': region,
@@ -346,3 +355,6 @@ class FastaSpider(scrapy.Spider):
             yield scrapy_splash.SplashRequest(
                 f'{self.BASE_URL}{url}?report=fasta', self.parse_nuccore, args={'wait': 2.5}
             )
+
+    def _write(self, line):
+        self._write_file.write(line)
