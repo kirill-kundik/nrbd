@@ -63,8 +63,8 @@ class Database:
         conditions = ['fasta = %s']
         values = [fasta_code]
 
-        if type_:
-            conditions.append(['sequence_type = %s'])
+        if type_ is not None:
+            conditions.append('sequence_type = %s')
             values.append(type_)
 
         return self.select('sequence', conditions, values)

@@ -1,4 +1,5 @@
 import csv
+import time
 
 import psycopg2
 
@@ -52,4 +53,6 @@ def main():
 
 
 if __name__ == '__main__':
+    start_time = time.monotonic()
     main()
+    print(f'\nExecuted time: {time.monotonic() - start_time:.3f}s')
