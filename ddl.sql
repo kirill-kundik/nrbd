@@ -76,24 +76,6 @@ create table person
 alter table person
     owner to postgres;
 
-create table wild_type_sequence
-(
-    id                    serial  not null
-        constraint wild_type_sequence_pkey
-            primary key,
-    wild_sequence_id      integer not null
-        constraint wild_type_sequence_wild_sequence_id_fkey
-            references sequence
-            on delete cascade,
-    component_sequence_id integer
-        constraint wild_type_sequence_component_sequence_id_fkey
-            references sequence
-            on delete set null
-);
-
-alter table wild_type_sequence
-    owner to postgres;
-
 -- CREATE TRIGGER generate_fasta_positions
 --     AFTER INSERT
 --     ON sequence
