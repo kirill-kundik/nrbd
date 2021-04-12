@@ -75,9 +75,3 @@ create table person
 
 alter table person
     owner to postgres;
-
--- CREATE TRIGGER generate_fasta_positions
---     AFTER INSERT
---     ON sequence
---     FOR EACH ROW
--- EXECUTE PROCEDURE generate_positions();
