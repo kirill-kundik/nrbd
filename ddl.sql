@@ -28,8 +28,9 @@ create table sequence
         constraint sequence_pkey
             primary key,
     sequence_type integer default 0 not null,
-    name          varchar(255)      null unique,
-    fasta         varchar(377)      not null unique
+    name          varchar(255)      null,
+    fasta         varchar(377)      not null,
+    UNIQUE (sequence_type, name, fasta)
 );
 
 alter table sequence

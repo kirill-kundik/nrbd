@@ -59,8 +59,15 @@ class Database:
 
         return region
 
-    def get_sequence(self, fasta_code):
-        return self.select('sequence', ['fasta = %s'], [fasta_code])
+    def get_sequence(self, fasta_code, type_=None):
+        conditions = ['fasta = %s']
+        values = [fasta_code]
+
+        if type_:
+            conditions.append(['sequence_type = %s'])
+            values.append(type_)
+
+        return self.select('sequence', conditions, values)
 
     def get_person(self, url):
         return self.select('person', ['url = %s'], [url])

@@ -37,7 +37,7 @@ def main():
     processed = 0
 
     for f in fasta:
-        sequence = db.get_sequence(f[2])
+        sequence = db.get_sequence(f[2], 0)
         if sequence is None:
             sequence = db.insert_sequence(f[2])
 
