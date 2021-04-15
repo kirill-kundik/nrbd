@@ -2,7 +2,10 @@ import collections
 from typing import List, Union, Tuple
 
 import openpyxl
+import psycopg2
 from openpyxl.worksheet.worksheet import Worksheet
+
+import database
 
 
 class XlsxWrapperError(Exception):
@@ -184,47 +187,98 @@ class XlsxWrapper:
         return names, values
 
 
-if __name__ == '__main__':
-    wrapper = XlsxWrapper('test.xlsx')
+def create_sheet(wrapper, db, title, district=None):
     # First row of the document: distances
-    wrapper.insert_distances('ALL', [1, 2, 3])
+
+    dist_range = range(0, 377)
+    wrapper.insert_distances('ALL', dist_range)
     # №№2-5,7-10,12-15,17-20 rows in the docs
+    wild_type = db.select("public.sequence", ["name='WILD_TYPE_ALL'"], first_=True)
+    print(wild_type)
+
+    for base_name in ['EVA', 'ANDREWS', 'WILD_TYPE_ALL']:
+        res = db.rosp(base_name)
+        line_1 = [0 for i in dist_range]
+        line_2 = [0 for i in dist_range]
+        for i in dist_range:
+            for j in res:
+                if j["diff_num"] == i:
+                    line_1[i] = j["frequency"]
+                    line_2[i] = j["p"]
+
+        math_expectation = db.math_expectation(base_name)[0]['math_expectation']
+        std = db.std(base_name)[0]['standart_dev']
+        mode = db.mode(base_name)[0]['diff_num']
+        min_value = db.min_value(base_name)[0]['min']
+        max_value = db.max_value(base_name)[0]['max']
+        coeff = db.coeff(base_name)[0]['koef']
+        wrapper.insert_distribution(
+            'ALL', {f'Розподіл відносно {base_name}': line_1, f'Розподіл відносно {base_name} (частка)': line_2, 'values': {
+                'mean': math_expectation,
+                'std': std,
+                'mode': mode,
+                'min': min_value,
+                'max': max_value,
+                'coeff': coeff}}
+        )
+
+    line_1 = [0 for i in dist_range]
+    line_2 = [0 for i in dist_range]
+    for i in dist_range:
+        for j in res:
+            if j["diff_num"] == i:
+                line_1[i] = j["frequency"]
+                line_2[i] = j["p"]
+
+    math_expectation = db.math_expectation_each_to_each()[0]['math_expectation']
+    print(math_expectation)
+    std = db.std_each_to_each()[0]['standart_dev']
+    print(std)
+    mode = db.mode_each_to_each()[0]['diff_num']
+    print(mode)
+    min_value = db.min_value_each_to_each()[0]['min']
+    print(min_value)
+    max_value = db.max_value_each_to_each()[0]['max']
+    print(max_value)
+    coeff = db.coeff_each_to_each()[0]['koef']
+    print(coeff)
+    # wrapper.insert_distribution(
+    #     'ALL', {'Розподіл кожен з кожним': [1, 2, 3], 'Розподіл кожен з кожним (частка)': [2, 3, 4], 'values': {
+    #         'mean': 1.0,
+    #         'std': 1.0,
+    #         'mode': 1.0,
+    #         'min': 1.0,
+    #         'max': 1.0,
+    #         'coeff': 1.0}}
+    # )
     wrapper.insert_distribution(
-        'ALL', {'dist_1': [1, 2, 3], 'dist_2': [2, 3, 4], 'values': {
-            'mean': 1.0,
-            'std': 1.0,
-            'mode': 1.0,
-            'min': 1.0,
-            'max': 1.0,
-            'coeff': 1.0}}
-    )
-    wrapper.insert_distribution(
-        'ALL', {'dist_1': [1, 2, 3], 'dist_2': [2, 3, 4], 'values': {
-            'mean': 1.0,
-            'std': 1.0,
-            'mode': 1.0,
-            'min': 1.0,
-            'max': 1.0,
-            'coeff': 1.0}}
-    )
-    wrapper.insert_distribution(
-        'ALL', {'dist_1': [1, 2, 3], 'dist_2': [2, 3, 4], 'values': {
-            'mean': 1.0,
-            'std': 1.0,
-            'mode': 1.0,
-            'min': 1.0,
-            'max': 1.0,
-            'coeff': 1.0}}
-    )
-    wrapper.insert_distribution(
-        'ALL', {'dist_1': [1, 2, 3], 'dist_2': [2, 3, 4], 'values': {
-            'mean': 1.0,
-            'std': 1.0,
-            'mode': 1.0,
-            'min': 1.0,
-            'max': 1.0,
-            'coeff': 1.0}}
+        'ALL', {'Розподіл кожен з кожним': line_1, 'Розподіл кожен з кожним (частка)': line_2, 'values': {
+            'mean': math_expectation,
+                'std': std,
+                'mode': mode,
+                'min': min_value,
+                'max': max_value,
+                'coeff': coeff}}
     )
     # The last rows of the sheet with wild type and population statistics
-    wrapper.insert_wild_type('ALL', 'AAAAA', 10, 15, 1, 0)
+    polim_EVA = db.polim('EVA')
+    polim_Andrews = db.polim('ANDREWS')
+    polim_wild = db.polim('WILD_TYPE_ALL')
+
+    wrapper.insert_wild_type('ALL', wild_type[3], polim_EVA[0][0], polim_Andrews[0][0], polim_wild[0][0], 0)
+
+
+if __name__ == '__main__':
+    conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='gulayeva'")
+    # conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='root'")
+    # conn.set_session(autocommit=True) # enabling autocommit
+    db = database.Database(conn)
+    db.calculate_wild("WILD_TYPE_ALL")
+    conn.commit()
+    # db.math_expectation('EVA')
+    wrapper = XlsxWrapper('test3.xlsx')
+    districts = ['IF', 'BK', 'BG', 'ST', 'CH', 'KHM']
+
+    create_sheet(wrapper, db, "ALL")
+
     wrapper.save()
