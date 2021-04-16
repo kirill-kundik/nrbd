@@ -190,7 +190,7 @@ class XlsxWrapper:
 def create_sheet(wrapper, db, title, district=None):
     # First row of the document: distances
 
-    dist_range = range(0, 377)
+    dist_range = range(0, 20)
     wrapper.insert_distances('ALL', dist_range)
     # №№2-5,7-10,12-15,17-20 rows in the docs
     wild_type = db.select("public.sequence", ["name='WILD_TYPE_ALL'"], first_=True)
@@ -222,6 +222,7 @@ def create_sheet(wrapper, db, title, district=None):
                 'coeff': coeff}}
         )
 
+    res = db.rosp_each_to_each()
     line_1 = [0 for i in dist_range]
     line_2 = [0 for i in dist_range]
     for i in dist_range:
@@ -276,7 +277,7 @@ if __name__ == '__main__':
     db.calculate_wild("WILD_TYPE_ALL")
     conn.commit()
     # db.math_expectation('EVA')
-    wrapper = XlsxWrapper('test3.xlsx')
+    wrapper = XlsxWrapper('test.xlsx')
     districts = ['IF', 'BK', 'BG', 'ST', 'CH', 'KHM']
 
     create_sheet(wrapper, db, "ALL")

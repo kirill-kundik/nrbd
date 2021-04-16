@@ -114,20 +114,13 @@ class Database:
         self.insert('person', ['region_id', 'sequence_id', 'url'], [region_id, sequence_id, url])
 
     def polim(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value FROM public.sequence " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = '{base_sequence}'), " \
-              f"seq_num AS (SELECT COUNT(*) AS total_num  " \
-              f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
-              f"WHERE sequence_type = 0) " \
-              f"SELECT COUNT(*) AS diff_count " \
-              f"FROM (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id " \
-              f"ORDER BY diff_num) AS fasta_with_diff;"
+        sql = f"WITH variables_count AS (SELECT position, COUNT(DISTINCT(value)) AS val_num " \
+              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
+              f"WHERE sequence_type=0 OR name='{base_sequence}' " \
+              f"GROUP BY position) " \
+              f"SELECT COUNT(*) " \
+              f"FROM variables_count " \
+              f"WHERE val_num > 1;"
 
         res = self.execute_query(sql, None, dict_return=True)
         return res
@@ -325,18 +318,20 @@ class Database:
 
     def rosp_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
-              f"SELECT public.person.id, fasta, sequence_type " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
-              f"WHERE sequence_type = 0), " \
-              f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
+              f"WHERE sequence_type = 0 " \
+              f"), " \
+              f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2,  " \
+              f"sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2,  " \
+              f"sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
               f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
-              f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id)  " \
-              f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
+              f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id)  " \
+              f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id " \
               f"WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value " \
-              f"GROUP BY help_table.id_1, help_table.id_2, help_table.fasta_1, help_table.fasta_2 " \
-              f"ORDER BY help_table.id_1, help_table.id_2), " \
+              f"GROUP BY help_table.id_1, help_table.id_2), " \
               f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
               f"FROM fasta_diff " \
               f"GROUP BY diff_num " \
@@ -344,10 +339,12 @@ class Database:
               f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
               f"FROM rosp) " \
               f"SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp"
+              f"FROM rosp;"
+
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
+    # todo
     def math_expectation_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
@@ -376,6 +373,7 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
+    # todo
     def std_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
@@ -407,6 +405,7 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
+    # todo
     def mode_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
@@ -437,6 +436,7 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
+    # todo
     def min_value_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
@@ -465,6 +465,7 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
+    # todo
     def max_value_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
@@ -493,6 +494,7 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
+    # todo
     def coeff_each_to_each(self):
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
