@@ -7,6 +7,9 @@ class Database:
         self._conn = conn
         self._debug = debug
 
+    def commit(self):
+        self._conn.commit()
+
     def get_cursor(self, dict_return=False):
         return self._conn.cursor(cursor_factory=psycopg2.extras.DictCursor) if dict_return else self._conn.cursor()
 
@@ -113,19 +116,20 @@ class Database:
     def insert_person(self, region_id, sequence_id, url):
         self.insert('person', ['region_id', 'sequence_id', 'url'], [region_id, sequence_id, url])
 
-    def polim(self, base_sequence):
+    def polim(self, base_name, region):
+        # TODO rework with region
         sql = f"WITH variables_count AS (SELECT position, COUNT(DISTINCT(value)) AS val_num " \
               f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE sequence_type=0 OR name='{base_sequence}' " \
+              f"WHERE sequence_type=0 OR name='{base_name}'" \
               f"GROUP BY position) " \
               f"SELECT COUNT(*) " \
               f"FROM variables_count " \
               f"WHERE val_num > 1;"
 
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+        return self.execute_query(sql, None, dict_return=True)
 
-    def calculate_wild(self, name):
+    def calculate_wild(self, region):
+        # TODO rework with region
         try:
             sql = f"WITH letter_on_position_count AS (SELECT position, value, COUNT(value) AS letter_count " \
                   f"FROM (public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id) " \
@@ -140,7 +144,7 @@ class Database:
                   f"FROM letter_on_position_count INNER JOIN max_count ON letter_on_position_count.position = max_count.position " \
                   f"WHERE letter_count = max_count " \
                   f"ORDER BY position) " \
-                  f"INSERT INTO public.sequence (sequence_type, name, fasta) VALUES (2, '{name}', (SELECT STRING_AGG ( " \
+                  f"INSERT INTO public.sequence (sequence_type, name, fasta) VALUES (2, 'WILD_TYPE_{region}', (SELECT STRING_AGG ( " \
                   f"most_popular.value, '' " \
                   f"ORDER BY most_popular.position ) most_popular " \
                   f"FROM most_popular LIMIT 1) );"
@@ -149,174 +153,267 @@ class Database:
         except psycopg2.errors.UniqueViolation:
             pass
 
-    def rosp(self, base_name):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value  FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id  WHERE name = '{base_name}'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id) " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s FROM rosp) " \
-              f"SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p FROM rosp"
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+    def distribution(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
 
-    def math_expectation(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = '{base_sequence}'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp), " \
-              f"probability_rosp AS (SELECT diff_num, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp) " \
-              f"SELECT SUM(diff_num*p) AS math_expectation " \
-              f"FROM probability_rosp;"
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+        if region != 'ALL':
+            params.append(region)
+            sql += "AND public.region.name = %s"
 
-    def std(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = '{base_sequence}'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp), " \
-              f"probability_rosp AS (SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp), " \
-              f"math_expectation AS (SELECT SUM(diff_num*p) AS math_expct " \
-              f"FROM probability_rosp) " \
-              f"SELECT |/SUM((diff_num - (SELECT math_expct FROM math_expectation)) * (diff_num - (SELECT math_expct FROM math_expectation))*p) AS standart_dev " \
-              f"FROM probability_rosp;"
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp)
+SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+FROM rosp
+        """
 
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+        return self.execute_query(sql, params, dict_return=True)
 
-    def mode(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = '{base_sequence}'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp), " \
-              f"probability_rosp AS (SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp) " \
-              f"SELECT diff_num, frequency , p " \
-              f"FROM probability_rosp  " \
-              f"WHERE frequency = (SELECT MAX(frequency) " \
-              f"FROM probability_rosp);"
+    def math_expectation(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
 
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+        if region != 'ALL':
+            params.append(region)
+            sql += "AND public.region.name = %s"
 
-    def min_value(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = '{base_sequence}'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp), " \
-              f"probability_rosp AS (SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp) " \
-              f"SELECT MIN(diff_num) " \
-              f"FROM probability_rosp;"
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp),
+     probability_rosp AS (SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+                          FROM rosp)
+SELECT SUM(diff_num * p) AS math_expectation
+FROM probability_rosp
+        """
 
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+        return self.execute_query(sql, params, dict_return=True)
 
-    def max_value(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = '{base_sequence}'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp), " \
-              f"probability_rosp AS (SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp) " \
-              f"SELECT MAX(diff_num) " \
-              f"FROM probability_rosp;"
+    def std(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
 
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+        if region != 'ALL':
+            params.append(region)
+            sql += 'AND public.region.name = %s'
 
-    def coeff(self, base_sequence):
-        sql = f"WITH base_positions AS (SELECT position AS base_pos, value AS eva_value " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE name = 'EVA'), " \
-              f"fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num " \
-              f"FROM ((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
-              f"INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)  " \
-              f"INNER JOIN base_positions ON base_pos = public.fasta_position.position " \
-              f"WHERE value != eva_value AND sequence_type = 0 " \
-              f"GROUP BY public.person.id), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp), " \
-              f"probability_rosp AS (SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp), " \
-              f"math_expectation AS (SELECT SUM(diff_num*p) AS math_expct " \
-              f"FROM probability_rosp), " \
-              f"standart_deviation AS (SELECT |/SUM((diff_num - (SELECT math_expct FROM math_expectation)) * (diff_num - (SELECT math_expct FROM math_expectation))*p) AS standart_dev " \
-              f"FROM probability_rosp) " \
-              f"SELECT (SELECT standart_dev FROM standart_deviation)/(SELECT math_expct FROM math_expectation) as koef;"
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp),
+     probability_rosp AS (SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+                          FROM rosp),
+     math_expectation AS (SELECT SUM(diff_num * p) AS math_expct
+                          FROM probability_rosp)
+SELECT |/SUM((diff_num - (SELECT math_expct FROM math_expectation)) *
+             (diff_num - (SELECT math_expct FROM math_expectation)) * p) AS standart_dev
+FROM probability_rosp
+        """
 
+        return self.execute_query(sql, params, dict_return=True)
 
-        res = self.execute_query(sql, None, dict_return=True)
-        return res
+    def mode(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
 
-    def rosp_each_to_each(self):
+        if region != 'ALL':
+            params.append(region)
+            sql += 'AND public.region.name = %s'
+
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp),
+     probability_rosp AS (SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+                          FROM rosp)
+SELECT diff_num
+FROM probability_rosp
+WHERE frequency = (SELECT MAX(frequency)
+                   FROM probability_rosp)
+        """
+
+        return self.execute_query(sql, params, dict_return=True)
+
+    def min_value(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
+
+        if region != 'ALL':
+            params.append(region)
+            sql += 'AND public.region.name = %s'
+
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp),
+     probability_rosp AS (SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+                          FROM rosp)
+SELECT MIN(diff_num)
+FROM probability_rosp
+        """
+
+        return self.execute_query(sql, params, dict_return=True)
+
+    def max_value(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
+
+        if region != 'ALL':
+            params.append(region)
+            sql += 'AND public.region.name = %s'
+
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp),
+     probability_rosp AS (SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+                          FROM rosp)
+SELECT MAX(diff_num)
+FROM probability_rosp
+        """
+
+        return self.execute_query(sql, params, dict_return=True)
+
+    def coeff(self, base_name, region):
+        sql = """
+WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
+                        FROM public.sequence
+                                 INNER JOIN public.fasta_position
+                                            ON public.sequence.id = public.fasta_position.sequence_id
+                        WHERE name = %s),
+     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+                    FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
+                        INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
+                             INNER JOIN base_positions ON base_pos = public.fasta_position.position
+                    WHERE value != eva_value
+                      AND sequence_type = 0
+        """
+        params = [base_name]
+
+        if region != 'ALL':
+            params.append(region)
+            sql += 'AND public.region.name = %s'
+
+        sql += """
+GROUP BY public.person.id),
+     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+              FROM fasta_diff
+              GROUP BY diff_num
+              ORDER BY diff_num),
+     frequency_summ AS (SELECT SUM(frequency) AS f_s
+                        FROM rosp),
+     probability_rosp AS (SELECT diff_num, frequency, (frequency / (SELECT f_s FROM frequency_summ)) AS p
+                          FROM rosp),
+     math_expectation AS (SELECT SUM(diff_num * p) AS math_expct
+                          FROM probability_rosp),
+     standart_deviation AS (SELECT |/SUM((diff_num - (SELECT math_expct FROM math_expectation)) *
+                                         (diff_num - (SELECT math_expct FROM math_expectation)) * p) AS standart_dev
+                            FROM probability_rosp)
+SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM math_expectation) as koef
+        """
+
+        return self.execute_query(sql, params, dict_return=True)
+
+    def rosp_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
@@ -326,7 +423,7 @@ class Database:
               f"sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2,  " \
               f"sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id)  " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id " \
@@ -344,15 +441,15 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
-    # todo
-    def math_expectation_each_to_each(self):
+    def math_expectation_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
               f"WHERE sequence_type = 0), " \
               f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id) " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
@@ -373,8 +470,8 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
-    # todo
-    def std_each_to_each(self):
+    def std_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
@@ -382,7 +479,7 @@ class Database:
               f"),  " \
               f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id)  " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
@@ -405,15 +502,15 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
-    # todo
-    def mode_each_to_each(self):
+    def mode_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
               f"WHERE sequence_type = 0),  " \
               f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id)  " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
@@ -436,15 +533,15 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
-    # todo
-    def min_value_each_to_each(self):
+    def min_value_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
               f"WHERE sequence_type = 0),  " \
               f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id)  " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
@@ -465,15 +562,15 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
-    # todo
-    def max_value_each_to_each(self):
+    def max_value_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
               f"WHERE sequence_type = 0),  " \
               f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id)  " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
@@ -494,8 +591,8 @@ class Database:
         res = self.execute_query(sql, None, dict_return=True)
         return res
 
-    # todo
-    def coeff_each_to_each(self):
+    def coeff_each_to_each(self, region):
+        # TODO: rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, fasta, sequence_type " \
               f"FROM public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
@@ -503,7 +600,7 @@ class Database:
               f"),  " \
               f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
               f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0), " \
+              f"WHERE sequence_1.id != sequence_2.id), " \
               f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
               f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.id_1 = fasta_position_1.sequence_id)  " \
               f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.id_2 = fasta_position_2.sequence_id " \
@@ -526,6 +623,10 @@ class Database:
 
         res = self.execute_query(sql, None, dict_return=True)
         return res
+
+    def get_distinct_regions(self):
+        return [x[0] for x in self.execute_query('SELECT distinct name FROM region', None)]
+
 
 if __name__ == '__main__':
     conn_ = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='gulayeva'")
