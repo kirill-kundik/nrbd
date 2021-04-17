@@ -150,7 +150,6 @@ class Database:
         return self.execute_query(sql, params, dict_return=True)
 
     def calculate_wild(self, region):
-        # TODO + rework with region
         try:
             sql = f"WITH letter_on_position_count AS (SELECT position, value, COUNT(value) AS letter_count " \
                   f"FROM ((public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id) " \
@@ -440,7 +439,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return self.execute_query(sql, params, dict_return=True)
 
     def distribution_each_to_each(self, region):
-        # TODO + rework with region
         sql = f"WITH sequence_with_duplicate AS ( " \
               f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
               f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
@@ -474,7 +472,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def math_expectation_each_to_each(self, region):
-        # TODO: rework with region
         sql = """
                 WITH sequence_with_duplicate AS (
 	            SELECT public.person.id, sequence_id, fasta, sequence_type
@@ -516,7 +513,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def std_each_to_each(self, region):
-        # TODO: rework with region
         sql = """
                         WITH sequence_with_duplicate AS (
         	            SELECT public.person.id, sequence_id, fasta, sequence_type
@@ -560,7 +556,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def mode_each_to_each(self, region):
-        # TODO: rework with region
         sql = """
                         WITH sequence_with_duplicate AS (
         	            SELECT public.person.id, sequence_id, fasta, sequence_type
@@ -604,7 +599,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def min_value_each_to_each(self, region):
-        # TODO: rework with region
         sql = """
                         WITH sequence_with_duplicate AS (
         	            SELECT public.person.id, sequence_id, fasta, sequence_type
@@ -644,7 +638,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def max_value_each_to_each(self, region):
-        # TODO: rework with region
         sql = """
                         WITH sequence_with_duplicate AS (
         	            SELECT public.person.id, sequence_id, fasta, sequence_type
@@ -683,7 +676,6 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def coeff_each_to_each(self, region):
-        # TODO: rework with region
         sql = """
                         WITH sequence_with_duplicate AS (
         	            SELECT public.person.id, sequence_id, fasta, sequence_type
