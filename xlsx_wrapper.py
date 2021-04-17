@@ -199,7 +199,7 @@ def create_sheet(wrapper, db, region):
     wild_type = db.select("public.sequence", [f"name='WILD_TYPE_{region}'"], first_=True)
     print(wild_type)
 
-    for base_name in ['EVA', 'ANDREWS', 'WILD_TYPE_ALL']:
+    for base_name in ['EVA', 'ANDREWS', f'WILD_TYPE_{region}']:
         res = db.distribution(base_name, region)
         line_1 = [0 for i in dist_range]
         line_2 = [0 for i in dist_range]
@@ -225,46 +225,58 @@ def create_sheet(wrapper, db, region):
                 'coeff': coeff}}
         )
 
-    # res = db.rosp_each_to_each()
-    # line_1 = [0 for i in dist_range]
-    # line_2 = [0 for i in dist_range]
-    # for i in dist_range:
-    #     for j in res:
-    #         if j["diff_num"] == i:
-    #             line_1[i] = j["frequency"]
-    #             line_2[i] = j["p"]
-    #
-    # math_expectation = db.math_expectation_each_to_each()[0]['math_expectation']
-    # print(math_expectation)
-    # std = db.std_each_to_each()[0]['standart_dev']
-    # print(std)
-    # mode = db.mode_each_to_each()[0]['diff_num']
-    # print(mode)
-    # min_value = db.min_value_each_to_each()[0]['min']
-    # print(min_value)
-    # max_value = db.max_value_each_to_each()[0]['max']
-    # print(max_value)
-    # coeff = db.coeff_each_to_each()[0]['koef']
-    # print(coeff)
-    # wrapper.insert_distribution(
-    #     region, {'Розподіл кожен з кожним': line_1, 'Розподіл кожен з кожним (частка)': line_2, 'values': {
-    #         'mean': math_expectation,
-    #             'std': std,
-    #             'mode': mode,
-    #             'min': min_value,
-    #             'max': max_value,
-    #             'coeff': coeff}}
-    # )
+    res = db.distribution_each_to_each(region)
+    line_1 = [0 for i in dist_range]
+    line_2 = [0 for i in dist_range]
+    for i in dist_range:
+        for j in res:
+            if j["diff_num"] == i:
+                line_1[i] = j["frequency"]
+                line_2[i] = j["p"]
+
+    math_expectation = db.math_expectation_each_to_each(region)[0]['math_expectation']
+    print(math_expectation)
+    std = db.std_each_to_each(region)[0]['standart_dev']
+    print(std)
+    mode = db.mode_each_to_each(region)[0]['diff_num']
+    print(mode)
+    min_value = db.min_value_each_to_each(region)[0]['min']
+    print(min_value)
+    max_value = db.max_value_each_to_each(region)[0]['max']
+    print(max_value)
+    coeff = db.coeff_each_to_each(region)[0]['koef']
+    print(coeff)
+    wrapper.insert_distribution(
+        region, {'Розподіл кожен з кожним': line_1, 'Розподіл кожен з кожним (частка)': line_2, 'values': {
+            'mean': math_expectation,
+                'std': std,
+                'mode': mode,
+                'min': min_value,
+                'max': max_value,
+                'coeff': coeff}}
+    )
     # The last rows of the sheet with wild type and population statistics
-
-    # polim Wild to EVA
-    # polim wild to Andrew
-
+    polim_ANDREWS_WILD = db.diff_between_base_and_wild('ANDREWS', f'WILD_TYPE_{region}')
+    if polim_ANDREWS_WILD:
+        pol1 = polim_ANDREWS_WILD[0][0]
+    else:
+        pol1 = 0
+    polim_EVA_WILD = db.diff_between_base_and_wild('EVA', f'WILD_TYPE_{region}')
+    if polim_EVA_WILD:
+        pol2 = polim_EVA_WILD[0][0]
+    else:
+        pol2 = 0
     polim_EVA = db.polim('EVA', region)
+    if polim_EVA:
+        pol3 = polim_EVA[0][0]
+    else:
+        pol3 = 0
     polim_Andrews = db.polim('ANDREWS', region)
-
-    wrapper.insert_wild_type(region, wild_type[3], polim_EVA[0][0], polim_Andrews[0][0],
-                             polim_EVA[0][0], polim_Andrews[0][0])
+    if polim_Andrews:
+        pol4 = polim_Andrews[0][0]
+    else:
+        pol4 = 0
+    wrapper.insert_wild_type(region, wild_type[3], pol1, pol2, pol3, pol4)
 
 
 if __name__ == '__main__':
@@ -272,7 +284,7 @@ if __name__ == '__main__':
     # conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='root'")
     # conn.set_session(autocommit=True) # enabling autocommit
     db = database.Database(conn)
-    wrapper = XlsxWrapper('test.xlsx')
+    wrapper = XlsxWrapper('final.xlsx')
     regions = ['ALL', 'IF', 'BK', 'BG', 'ST', 'CH', 'KHM']
     for region in regions:
         create_sheet(wrapper, db, region)
