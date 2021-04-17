@@ -117,25 +117,38 @@ class Database:
         self.insert('person', ['region_id', 'sequence_id', 'url'], [region_id, sequence_id, url])
 
     def polim(self, base_name, region):
-        # TODO rework with region
         sql = f"WITH variables_count AS (SELECT position, COUNT(DISTINCT(value)) AS val_num " \
-              f"FROM public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id " \
-              f"WHERE sequence_type=0 OR name='{base_name}'" \
-              f"GROUP BY position) " \
-              f"SELECT COUNT(*) " \
-              f"FROM variables_count " \
-              f"WHERE val_num > 1;"
+              f"FROM ((public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id) " \
+              f"INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type=0 OR public.sequence.name=%s "
+        params = [base_name]
 
-        return self.execute_query(sql, None, dict_return=True)
+        if region != 'ALL':
+            params.append(region)
+            sql += "AND public.region.name = %s "
+
+        sql += f"GROUP BY position) " \
+               f"SELECT COUNT(*) " \
+               f"FROM variables_count " \
+               f"WHERE val_num > 1;"
+
+        return self.execute_query(sql, params, dict_return=True)
 
     def calculate_wild(self, region):
-        # TODO rework with region
+        # TODO + rework with region
         try:
             sql = f"WITH letter_on_position_count AS (SELECT position, value, COUNT(value) AS letter_count " \
-                  f"FROM (public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id) " \
-                  f"INNER JOIN public.person ON public.person.sequence_id = public.sequence.id " \
-                  f"WHERE sequence_type = 0 " \
-                  f"GROUP BY position, value), " \
+                  f"FROM ((public.sequence INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id) " \
+                  f"INNER JOIN public.person ON public.person.sequence_id = public.sequence.id)  " \
+                  f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+                  f"WHERE sequence_type = 0 "
+
+            params = [region]
+            if region != 'ALL':
+                sql += "AND public.region.name = %s "
+
+            sql += f"GROUP BY position, value), " \
                   f"max_count AS (SELECT position, MAX(letter_count) AS max_count " \
                   f"FROM letter_on_position_count " \
                   f"GROUP BY position " \
@@ -149,7 +162,7 @@ class Database:
                   f"ORDER BY most_popular.position ) most_popular " \
                   f"FROM most_popular LIMIT 1) );"
 
-            self.execute_query(sql, None, fetch=False, dict_return=True)
+            self.execute_query(sql, params, fetch=False, dict_return=True)
         except psycopg2.errors.UniqueViolation:
             pass
 
@@ -171,7 +184,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += "AND public.region.name = %s"
+            sql += "AND public.region.name = %s "
 
         sql += """
 GROUP BY public.person.id),
@@ -205,7 +218,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += "AND public.region.name = %s"
+            sql += "AND public.region.name = %s "
 
         sql += """
 GROUP BY public.person.id),
@@ -241,7 +254,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s'
+            sql += 'AND public.region.name = %s '
 
         sql += """
 GROUP BY public.person.id),
@@ -280,7 +293,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s'
+            sql += 'AND public.region.name = %s '
 
         sql += """
 GROUP BY public.person.id),
@@ -318,7 +331,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s'
+            sql += 'AND public.region.name = %s '
 
         sql += """
 GROUP BY public.person.id),
@@ -354,7 +367,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s'
+            sql += 'AND public.region.name = %s '
 
         sql += """
 GROUP BY public.person.id),
@@ -390,7 +403,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s'
+            sql += 'AND public.region.name = %s '
 
         sql += """
 GROUP BY public.person.id),
