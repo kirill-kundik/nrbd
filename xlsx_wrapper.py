@@ -280,11 +280,11 @@ def create_sheet(wrapper, db, region):
 
 
 if __name__ == '__main__':
-    conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='gulayeva'")
+    conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='root'")
     # conn = psycopg2.connect("dbname='nrbd' user='postgres' host='localhost' password='root'")
     # conn.set_session(autocommit=True) # enabling autocommit
     db = database.Database(conn)
-    wrapper = XlsxWrapper('final.xlsx')
+    wrapper = XlsxWrapper('final5.xlsx')
     regions = ['ALL', 'IF', 'BK', 'BG', 'ST', 'CH', 'KHM']
     for region in regions:
         create_sheet(wrapper, db, region)

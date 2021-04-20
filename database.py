@@ -186,7 +186,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -200,8 +200,17 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
             sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
-     rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
               ORDER BY diff_num),
@@ -220,7 +229,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -234,7 +243,17 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
             sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), 
      rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
@@ -256,7 +275,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -267,10 +286,20 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s '
+            sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), 
      rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
@@ -295,7 +324,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -306,10 +335,20 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s '
+            sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), 
      rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
@@ -333,7 +372,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -344,10 +383,20 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s '
+            sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), 
      rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
@@ -369,7 +418,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -380,10 +429,20 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s '
+            sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), 
      rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
@@ -405,7 +464,7 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
                                  INNER JOIN public.fasta_position
                                             ON public.sequence.id = public.fasta_position.sequence_id
                         WHERE name = %s),
-     fasta_diff AS (SELECT public.person.id, COUNT(*) AS diff_num
+     diff_count AS (SELECT public.person.id, COUNT(*) AS d_count
                     FROM (((public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) INNER JOIN public.region ON public.person.region_id = public.region.id)
                         INNER JOIN public.fasta_position ON public.sequence.id = public.fasta_position.sequence_id)
                              INNER JOIN base_positions ON base_pos = public.fasta_position.position
@@ -416,10 +475,20 @@ WITH base_positions AS (SELECT position AS base_pos, value AS eva_value
 
         if region != 'ALL':
             params.append(region)
-            sql += 'AND public.region.name = %s '
+            sql += "AND public.region.name = %s "
 
         sql += """
-GROUP BY public.person.id),
+                GROUP BY public.person.id),
+                fasta_diff AS (SELECT public.person.id, COALESCE(d_count, 0) AS diff_num
+                FROM ((public.person  INNER JOIN public.region ON public.person.region_id = public.region.id) 
+                      LEFT JOIN diff_count ON public.person.id = diff_count.id)  """
+
+        if region != 'ALL':
+            params.append(region)
+            sql += " WHERE public.region.name = %s "
+
+        sql += """ 
+        ), 
      rosp AS (SELECT diff_num, COUNT(*) AS frequency
               FROM fasta_diff
               GROUP BY diff_num
@@ -448,55 +517,66 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
-        sql += f"), " \
-              f"help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2,  " \
-              f"sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2,  " \
-              f"sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2 " \
-              f"FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2 " \
-              f"WHERE sequence_1.id != sequence_2.id), " \
-              f"fasta_diff AS (SELECT COUNT(*) AS diff_num " \
-              f"FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id)  " \
-              f"INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id " \
-              f"WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value " \
-              f"GROUP BY help_table.id_1, help_table.id_2), " \
-              f"rosp AS (SELECT diff_num, COUNT(*) AS frequency " \
-              f"FROM fasta_diff " \
-              f"GROUP BY diff_num " \
-              f"ORDER BY diff_num), " \
-              f"frequency_summ AS (SELECT SUM(frequency) AS f_s " \
-              f"FROM rosp) " \
-              f"SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p " \
-              f"FROM rosp;"
+        sql += """
+                    ),
+        help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+          sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+          sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+        FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+        WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+        
+        diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+        FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+        INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+        WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+        GROUP BY help_table.id_1, help_table.id_2),
+        
+        fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+        FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+        
+        rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
+        FROM fasta_diff
+        GROUP BY diff_num
+        ORDER BY diff_num),
+        
+        
+        frequency_summ AS (SELECT SUM(frequency) AS f_s
+        FROM rosp)
+        SELECT diff_num, frequency, (frequency/(SELECT f_s FROM frequency_summ)) AS p
+        FROM rosp;
+        """
 
         res = self.execute_query(sql, params, dict_return=True)
         return res
 
     def math_expectation_each_to_each(self, region):
-        sql = """
-                WITH sequence_with_duplicate AS (
-	            SELECT public.person.id, sequence_id, fasta, sequence_type
-	            FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) 
-	            INNER JOIN public.region ON public.region.id = public.person.region_id
-	            WHERE sequence_type = 0 
-            """
+        sql = f"WITH sequence_with_duplicate AS ( " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
+              f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type = 0 "
         params = []
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
-
         sql += """
-                    ),
-            help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
-                sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
-                sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
-            FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
-            WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
-            fasta_diff AS (SELECT COUNT(*) AS diff_num
-            FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
-            INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
-            WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
-            GROUP BY help_table.id_1, help_table.id_2),
-            rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                            ),
+                help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+                  sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+                  sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+                FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+                WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+
+                diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+                FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+                INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+                WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+                GROUP BY help_table.id_1, help_table.id_2),
+
+                fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+                FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+
+            rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
             FROM fasta_diff
             GROUP BY diff_num
             ORDER BY diff_num),
@@ -513,31 +593,34 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def std_each_to_each(self, region):
-        sql = """
-                        WITH sequence_with_duplicate AS (
-        	            SELECT public.person.id, sequence_id, fasta, sequence_type
-        	            FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) 
-        	            INNER JOIN public.region ON public.region.id = public.person.region_id
-        	            WHERE sequence_type = 0 
-                    """
+        sql = f"WITH sequence_with_duplicate AS ( " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
+              f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type = 0 "
         params = []
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
-
         sql += """
-                    ),
-            help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
-                sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
-                sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
-            FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
-            WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
-            fasta_diff AS (SELECT COUNT(*) AS diff_num
-            FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
-            INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
-            WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
-            GROUP BY help_table.id_1, help_table.id_2),
-            rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                            ),
+                help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+                  sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+                  sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+                FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+                WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+
+                diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+                FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+                INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+                WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+                GROUP BY help_table.id_1, help_table.id_2),
+
+                fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+                FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+
+
+            rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
             FROM fasta_diff
             GROUP BY diff_num
             ORDER BY diff_num),
@@ -556,31 +639,33 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def mode_each_to_each(self, region):
-        sql = """
-                        WITH sequence_with_duplicate AS (
-        	            SELECT public.person.id, sequence_id, fasta, sequence_type
-        	            FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) 
-        	            INNER JOIN public.region ON public.region.id = public.person.region_id
-        	            WHERE sequence_type = 0 
-                    """
+        sql = f"WITH sequence_with_duplicate AS ( " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
+              f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type = 0 "
         params = []
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
-
         sql += """
-            ),
-            help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
-            sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
-            sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
-            FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
-            WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
-            fasta_diff AS (SELECT COUNT(*) AS diff_num
-            FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
-            INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
-            WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
-            GROUP BY help_table.id_1, help_table.id_2),
-            rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                            ),
+                help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+                  sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+                  sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+                FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+                WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+
+                diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+                FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+                INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+                WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+                GROUP BY help_table.id_1, help_table.id_2),
+
+                fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+                FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+
+rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
             FROM fasta_diff
             GROUP BY diff_num
             ORDER BY diff_num),
@@ -599,29 +684,33 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def min_value_each_to_each(self, region):
-        sql = """
-                        WITH sequence_with_duplicate AS (
-        	            SELECT public.person.id, sequence_id, fasta, sequence_type
-        	            FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) 
-        	            INNER JOIN public.region ON public.region.id = public.person.region_id
-        	            WHERE sequence_type = 0 
-                    """
+        sql = f"WITH sequence_with_duplicate AS ( " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
+              f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type = 0 "
         params = []
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
-
         sql += """
-                    ),
-        help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
-        FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
-        WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
-        fasta_diff AS (SELECT COUNT(*) AS diff_num
-        FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
-        INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
-        WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
-        GROUP BY help_table.id_1, help_table.id_2),
-        rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                            ),
+                help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+                  sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+                  sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+                FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+                WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+
+                diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+                FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+                INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+                WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+                GROUP BY help_table.id_1, help_table.id_2),
+
+                fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+                FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+
+rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
         FROM fasta_diff
         GROUP BY diff_num
         ORDER BY diff_num),
@@ -638,28 +727,33 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def max_value_each_to_each(self, region):
-        sql = """
-                        WITH sequence_with_duplicate AS (
-        	            SELECT public.person.id, sequence_id, fasta, sequence_type
-        	            FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) 
-        	            INNER JOIN public.region ON public.region.id = public.person.region_id
-        	            WHERE sequence_type = 0 
-                    """
+        sql = f"WITH sequence_with_duplicate AS ( " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
+              f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type = 0 "
         params = []
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
         sql += """
-                    ),
-            help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
-            FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
-            WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
-            fasta_diff AS (SELECT COUNT(*) AS diff_num
-            FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
-            INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
-            WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
-            GROUP BY help_table.id_1, help_table.id_2),
-            rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                            ),
+                help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+                  sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+                  sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+                FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+                WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+
+                diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+                FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+                INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+                WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+                GROUP BY help_table.id_1, help_table.id_2),
+
+                fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+                FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+
+rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
             FROM fasta_diff
             GROUP BY diff_num
             ORDER BY diff_num),
@@ -676,29 +770,33 @@ SELECT (SELECT standart_dev FROM standart_deviation) / (SELECT math_expct FROM m
         return res
 
     def coeff_each_to_each(self, region):
-        sql = """
-                        WITH sequence_with_duplicate AS (
-        	            SELECT public.person.id, sequence_id, fasta, sequence_type
-        	            FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) 
-        	            INNER JOIN public.region ON public.region.id = public.person.region_id
-        	            WHERE sequence_type = 0 
-                    """
+        sql = f"WITH sequence_with_duplicate AS ( " \
+              f"SELECT public.person.id, sequence_id, fasta, sequence_type " \
+              f"FROM (public.sequence INNER JOIN public.person ON public.person.sequence_id = public.sequence.id) " \
+              f"INNER JOIN public.region ON public.region.id = public.person.region_id " \
+              f"WHERE sequence_type = 0 "
         params = []
         if region != 'ALL':
             params.append(region)
             sql += 'AND public.region.name = %s '
-
         sql += """
-                        ),
-            help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
-            FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
-            WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
-            fasta_diff AS (SELECT COUNT(*) AS diff_num
-            FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
-            INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
-            WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
-            GROUP BY help_table.id_1, help_table.id_2),
-            rosp AS (SELECT diff_num, COUNT(*) AS frequency
+                            ),
+                help_table AS (SELECT sequence_1.id AS id_1, sequence_2.id AS id_2, 
+                  sequence_1.sequence_id AS sequence_id_1, sequence_2.sequence_id AS sequence_id_2, 
+                  sequence_1.fasta AS fasta_1, sequence_2.fasta AS fasta_2
+                FROM sequence_with_duplicate AS sequence_1, sequence_with_duplicate AS sequence_2
+                WHERE sequence_1.id != sequence_2.id AND sequence_1.sequence_type = 0 AND sequence_2.sequence_type = 0),
+
+                diff_count AS (SELECT help_table.id_1 AS id_1, help_table.id_2 AS id_2, COUNT(*) AS d_count
+                FROM (help_table INNER JOIN public.fasta_position AS fasta_position_1 ON help_table.sequence_id_1 = fasta_position_1.sequence_id) 
+                INNER JOIN public.fasta_position AS fasta_position_2 ON help_table.sequence_id_2 = fasta_position_2.sequence_id
+                WHERE fasta_position_1.position = fasta_position_2.position AND fasta_position_1.value != fasta_position_2.value
+                GROUP BY help_table.id_1, help_table.id_2),
+
+                fasta_diff AS (SELECT COALESCE(d_count, 0) AS diff_num
+                FROM help_table LEFT JOIN diff_count ON (help_table.id_1 = diff_count.id_1 AND help_table.id_2 = diff_count.id_2)),
+
+rosp AS (SELECT diff_num, COUNT(*)/2 AS frequency
             FROM fasta_diff
             GROUP BY diff_num
             ORDER BY diff_num),
